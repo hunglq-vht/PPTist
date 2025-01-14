@@ -12,8 +12,8 @@ export interface ScreenState {
 
 export const useSnapshotStore = defineStore('snapshot', {
   state: (): ScreenState => ({
-    snapshotCursor: -1, // 历史快照指针
-    snapshotLength: 0, // 历史快照长度
+    snapshotCursor: -1, // history snapshot pointer
+    snapshotLength: 0, // history snapshot length
   }),
 
   getters: {
@@ -45,6 +45,22 @@ export const useSnapshotStore = defineStore('snapshot', {
       this.setSnapshotLength(1)
     },
   
+    /**
+     * Adds a new snapshot to the IndexedDB and manages the snapshot history.
+     * 
+     * This function performs the following steps:
+     * 1. Retrieves all snapshot IDs from the IndexedDB.
+     * 2. Determines which snapshots need to be deleted if the current snapshot pointer is not at the last position.
+     * 3. Creates and adds a new snapshot to the IndexedDB.
+     * 4. Calculates the new snapshot length and adjusts the snapshot pointer.
+     * 5. Deletes excess snapshots if the snapshot count exceeds the defined limit.
+     * 6. Ensures that the page focus remains unchanged after undo operations by updating the index of the second-to-last snapshot.
+     * 7. Deletes the snapshots that are no longer needed.
+     * 8. Updates the snapshot cursor and length in the store.
+     * 
+     * @async
+     * @returns {Promise<void>} A promise that resolves when the snapshot has been added and the history has been managed.
+     */
     async addSnapshot() {
       const slidesStore = useSlidesStore()
 
@@ -53,31 +69,34 @@ export const useSnapshotStore = defineStore('snapshot', {
   
       let needDeleteKeys: IndexableTypeArray = []
   
-      // 记录需要删除的快照ID
-      // 若当前快照指针不处在最后一位，那么再添加快照时，应该将当前指针位置后面的快照全部删除，对应的实际情况是：
-      // 用户撤回多次后，再进行操作（添加快照），此时原先被撤销的快照都应该被删除
+      // Record the IDs of snapshots that need to be deleted
+      // If the current snapshot pointer is not at the last position, then when adding a new snapshot, 
+      // all snapshots after the current pointer position should be deleted. 
+      // The actual scenario is: after the user undoes multiple times and then performs an operation (adds a snapshot), 
+      // the previously undone snapshots should all be deleted.
       if (this.snapshotCursor >= 0 && this.snapshotCursor < allKeys.length - 1) {
         needDeleteKeys = allKeys.slice(this.snapshotCursor + 1)
       }
   
-      // 添加新快照
+      // Add a new snapshot
       const snapshot = {
         index: slidesStore.slideIndex,
         slides: slidesStore.slides,
       }
       await db.snapshots.add(snapshot)
-  
-      // 计算当前快照长度，用于设置快照指针的位置（此时指针应该处在最后一位，即：快照长度 - 1）
+      
+      // Calculate the current snapshot length to set the snapshot pointer position (at this point, the pointer should be at the last position, i.e., snapshot length - 1)
       let snapshotLength = allKeys.length - needDeleteKeys.length + 1
-  
-      // 快照数量超过长度限制时，应该将头部多余的快照删除
+      
+      // When the number of snapshots exceeds the length limit, the excess snapshots at the beginning should be deleted
       const snapshotLengthLimit = 20
       if (snapshotLength > snapshotLengthLimit) {
         needDeleteKeys.push(allKeys[0])
         snapshotLength--
       }
   
-      // 快照数大于1时，需要保证撤回操作后维持页面焦点不变：也就是将倒数第二个快照对应的索引设置为当前页的索引
+      // When the number of snapshots is greater than 1, ensure that the page focus remains unchanged after undo operations: 
+      // update the index of the second-to-last snapshot to the current page index
       // https://github.com/pipipi-pikachu/PPTist/issues/27
       if (snapshotLength >= 2) {
         db.snapshots.update(allKeys[snapshotLength - 2] as number, { index: slidesStore.slideIndex })

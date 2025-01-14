@@ -10,7 +10,7 @@ export default () => {
   const slidesStore = useSlidesStore()
   const { slides, slideIndex, formatedAnimations } = storeToRefs(slidesStore)
 
-  // 当前页的元素动画执行到的位置
+  // The position of the element animation execution on the current slide
   const animationIndex = ref(0)
 
   // 动画执行状态

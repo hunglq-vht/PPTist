@@ -35,7 +35,7 @@ export default () => {
 
   const { addHistorySnapshot } = useHistorySnapshot()
 
-  // 创建（插入）一个元素并将其设置为被选中元素
+  // Create (insert) an element and set it as the selected element
   const createElement = (element: PPTElement, callback?: () => void) => {
     slidesStore.addElement(element)
     mainStore.setActiveElementIdList([element.id])

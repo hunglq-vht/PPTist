@@ -70,9 +70,10 @@ export const useSlidesStore = defineStore('slides', {
       return currentSlide.animations.filter(animation => elIds.includes(animation.elId))
     },
 
-    // 格式化的当前页动画
-    // 将触发条件为“与上一动画同时”的项目向上合并到序列中的同一位置
-    // 为触发条件为“上一动画之后”项目的上一项添加自动向下执行标记
+
+    // Formatted current slide animations
+    // Merge items with the trigger condition "meantime" into the same position in the sequence
+    // Add an auto-next execution flag to the previous item for items with the trigger condition "auto"
     formatedAnimations(state) {
       const currentSlide = state.slides[state.slideIndex]
       if (!currentSlide?.animations) return []
@@ -125,7 +126,7 @@ export const useSlidesStore = defineStore('slides', {
 
   actions: {
     setTitle(title: string) {
-      if (!title) this.title = '未命名演示文稿'
+      if (!title) this.title = 'Untitle Presentation'
       else this.title = title
     },
 
